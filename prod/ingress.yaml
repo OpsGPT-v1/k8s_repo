@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opsgpt-ingress
+  namespace: prod
+  annotations:
+    kubernetes.io/ingress.class: "azure/application-gateway"
+    appgw.ingress.kubernetes.io/health-probe-path: "/healthz"
+    appgw.ingress.kubernetes.io/ssl-redirect: "false"
+  labels:
+    app.kubernetes.io/part-of: opsgpt
+    environment: prod
+spec:
+  ingressClassName: azure-application-gateway
+  rules:
+    - http:
+        paths:
+          - path: /api/core
+            pathType: Prefix
+            backend:
+              service:
+                name: core-api-service
+                port:
+                  number: 8001
+          - path: /api/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: alert-ingestion-service
+                port:
+                  number: 8002
+          - path: /api/analysis
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-analysis-service
+                port:
+                  number: 8003
+          - path: /api/notifications
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 8004
+          - path: /alerts/webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: alert-ingestion-service
+                port:
+                  number: 8002
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 3000

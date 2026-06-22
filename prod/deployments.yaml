@@ -1,0 +1,439 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-service
+  namespace: prod
+  labels:
+    app: frontend-service
+    app.kubernetes.io/name: frontend-service
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: opsgpt
+    environment: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend-service
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: frontend-service
+        app.kubernetes.io/name: frontend-service
+        app.kubernetes.io/component: frontend
+        app.kubernetes.io/part-of: opsgpt
+        environment: prod
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: frontend-service-sa
+      containers:
+        - name: frontend-service
+          image: <ACR_NAME>.azurecr.io/opsgpt/frontend-service:prod
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: secrets-mount
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-mount
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: frontend-service-spc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-api-service
+  namespace: prod
+  labels:
+    app: core-api-service
+    app.kubernetes.io/name: core-api-service
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: opsgpt
+    environment: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: core-api-service
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: core-api-service
+        app.kubernetes.io/name: core-api-service
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: opsgpt
+        environment: prod
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: core-api-service-sa
+      containers:
+        - name: core-api-service
+          image: <ACR_NAME>.azurecr.io/opsgpt/core-api-service:prod
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: core-api-service-secret
+                  key: DATABASE_URL
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: core-api-service-secret
+                  key: JWT_SECRET_KEY
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: core-api-service-secret
+                  key: INTERNAL_API_KEY
+            - name: JWT_ALGORITHM
+              value: "HS256"
+            - name: JWT_EXPIRE_MINUTES
+              value: "60"
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://notification-service:8004"
+            - name: ENABLE_NOTIFICATIONS
+              value: "true"
+            - name: APP_ENV
+              value: "production"
+            - name: CORS_ORIGINS
+              value: "*"
+          volumeMounts:
+            - name: secrets-mount
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-mount
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: core-api-service-spc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-ingestion-service
+  namespace: prod
+  labels:
+    app: alert-ingestion-service
+    app.kubernetes.io/name: alert-ingestion-service
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: opsgpt
+    environment: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: alert-ingestion-service
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: alert-ingestion-service
+        app.kubernetes.io/name: alert-ingestion-service
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: opsgpt
+        environment: prod
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: alert-ingestion-service-sa
+      containers:
+        - name: alert-ingestion-service
+          image: <ACR_NAME>.azurecr.io/opsgpt/alert-ingestion-service:prod
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8002
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8002
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8002
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: alert-ingestion-service-secret
+                  key: DATABASE_URL
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: alert-ingestion-service-secret
+                  key: INTERNAL_API_KEY
+            - name: AI_ANALYSIS_SERVICE_URL
+              value: "http://ai-analysis-service:8003"
+            - name: CORE_API_URL
+              value: "http://core-api-service:8001"
+            - name: ENABLE_ANALYSIS_FORWARDING
+              value: "true"
+            - name: APP_ENV
+              value: "production"
+            - name: CORS_ORIGINS
+              value: "*"
+          volumeMounts:
+            - name: secrets-mount
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-mount
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: alert-ingestion-service-spc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-analysis-service
+  namespace: prod
+  labels:
+    app: ai-analysis-service
+    app.kubernetes.io/name: ai-analysis-service
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: opsgpt
+    environment: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-analysis-service
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: ai-analysis-service
+        app.kubernetes.io/name: ai-analysis-service
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: opsgpt
+        environment: prod
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: ai-analysis-service-sa
+      containers:
+        - name: ai-analysis-service
+          image: <ACR_NAME>.azurecr.io/opsgpt/ai-analysis-service:prod
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8003
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8003
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8003
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ai-analysis-service-secret
+                  key: DATABASE_URL
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-analysis-service-secret
+                  key: INTERNAL_API_KEY
+            - name: AZURE_FOUNDRY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-analysis-service-secret
+                  key: AZURE_FOUNDRY_API_KEY
+            - name: CORE_API_URL
+              value: "http://core-api-service:8001"
+            - name: CORRELATION_WINDOW_MINUTES
+              value: "10"
+            - name: AI_PROVIDER
+              value: "azure_foundry"
+            - name: AZURE_FOUNDRY_API_MODE
+              value: "responses"
+            - name: AZURE_FOUNDRY_ENDPOINT
+              value: "https://ahamedaasik-ai-foundry.openai.azure.com/openai/v1"
+            - name: AZURE_FOUNDRY_MODEL
+              value: "gpt-5.3-codex"
+            - name: AZURE_FOUNDRY_API_VERSION
+              value: "2025-04-01-preview"
+            - name: AZURE_FOUNDRY_TIMEOUT_SECONDS
+              value: "60"
+            - name: AZURE_FOUNDRY_MAX_RETRIES
+              value: "2"
+            - name: AZURE_FOUNDRY_TEMPERATURE
+              value: "0.2"
+            - name: APP_ENV
+              value: "production"
+            - name: CORS_ORIGINS
+              value: "*"
+          volumeMounts:
+            - name: secrets-mount
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-mount
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ai-analysis-service-spc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: prod
+  labels:
+    app: notification-service
+    app.kubernetes.io/name: notification-service
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: opsgpt
+    environment: prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: notification-service
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        app.kubernetes.io/name: notification-service
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: opsgpt
+        environment: prod
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: notification-service-sa
+      containers:
+        - name: notification-service
+          image: <ACR_NAME>.azurecr.io/opsgpt/notification-service:prod
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8004
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8004
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8004
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secret
+                  key: DATABASE_URL
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: notification-service-secret
+                  key: SLACK_WEBHOOK_URL
+            - name: NOTIFICATION_CHANNEL
+              value: "console"
+            - name: NOTIFICATION_RETRY_COUNT
+              value: "3"
+            - name: NOTIFICATION_TIMEOUT_SECONDS
+              value: "10"
+            - name: APP_ENV
+              value: "production"
+            - name: CORS_ORIGINS
+              value: "*"
+          volumeMounts:
+            - name: secrets-mount
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-mount
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: notification-service-spc
