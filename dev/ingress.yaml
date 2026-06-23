@@ -4,8 +4,8 @@ metadata:
   name: opsgpt-ingress
   namespace: dev
   annotations:
-    kubernetes.io/ingress.class: "azure/application-gateway"
-    appgw.ingress.kubernetes.io/health-probe-path: "/healthz"
+    kubernetes.io/ingress.class: "azure-application-gateway"
+    appgw.ingress.kubernetes.io/health-probe-path: "/health"
     appgw.ingress.kubernetes.io/ssl-redirect: "false"
   labels:
     app.kubernetes.io/part-of: opsgpt

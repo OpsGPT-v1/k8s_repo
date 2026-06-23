@@ -28,41 +28,30 @@ spec:
       serviceAccountName: frontend-service-sa
       containers:
         - name: frontend-service
-          image: <ACR_NAME>.azurecr.io/opsgpt/frontend-service:dev
+          image: opsgpt.azurecr.io/opsgpt/frontend-service:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
               name: http
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: 3000
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 3000
             initialDelaySeconds: 10
             periodSeconds: 5
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 10m
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 512Mi
-          volumeMounts:
-            - name: secrets-mount
-              mountPath: /mnt/secrets-store
-              readOnly: true
-      volumes:
-        - name: secrets-mount
-          csi:
-            driver: secrets-store.csi.k8s.io
-            readOnly: true
-            volumeAttributes:
-              secretProviderClass: frontend-service-spc
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -94,27 +83,27 @@ spec:
       serviceAccountName: core-api-service-sa
       containers:
         - name: core-api-service
-          image: <ACR_NAME>.azurecr.io/opsgpt/core-api-service:dev
+          image: opsgpt.azurecr.io/opsgpt/core-api-service:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8001
               name: http
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: 8001
             initialDelaySeconds: 20
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 8001
             initialDelaySeconds: 15
             periodSeconds: 5
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 10m
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 512Mi
@@ -188,27 +177,27 @@ spec:
       serviceAccountName: alert-ingestion-service-sa
       containers:
         - name: alert-ingestion-service
-          image: <ACR_NAME>.azurecr.io/opsgpt/alert-ingestion-service:dev
+          image: opsgpt.azurecr.io/opsgpt/alert-ingestion-service:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8002
               name: http
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: 8002
             initialDelaySeconds: 20
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 8002
             initialDelaySeconds: 15
             periodSeconds: 5
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 10m
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 512Mi
@@ -275,27 +264,27 @@ spec:
       serviceAccountName: ai-analysis-service-sa
       containers:
         - name: ai-analysis-service
-          image: <ACR_NAME>.azurecr.io/opsgpt/ai-analysis-service:dev
+          image: opsgpt.azurecr.io/opsgpt/ai-analysis-service:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8003
               name: http
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: 8003
             initialDelaySeconds: 20
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 8003
             initialDelaySeconds: 15
             periodSeconds: 5
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 10m
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 512Mi
@@ -324,9 +313,9 @@ spec:
             - name: AZURE_FOUNDRY_API_MODE
               value: "responses"
             - name: AZURE_FOUNDRY_ENDPOINT
-              value: "https://ahamedaasik-ai-foundry.openai.azure.com/openai/v1"
+              value: "https://opsgpt-ai-aasik.openai.azure.com/openai/v1"
             - name: AZURE_FOUNDRY_MODEL
-              value: "gpt-5.3-codex"
+              value: "gpt-model-deploy"
             - name: AZURE_FOUNDRY_API_VERSION
               value: "2025-04-01-preview"
             - name: AZURE_FOUNDRY_TIMEOUT_SECONDS
@@ -381,27 +370,27 @@ spec:
       serviceAccountName: notification-service-sa
       containers:
         - name: notification-service
-          image: <ACR_NAME>.azurecr.io/opsgpt/notification-service:dev
+          image: opsgpt.azurecr.io/opsgpt/notification-service:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8004
               name: http
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /health
               port: 8004
             initialDelaySeconds: 20
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 8004
             initialDelaySeconds: 15
             periodSeconds: 5
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 10m
+              memory: 64Mi
             limits:
               cpu: 500m
               memory: 512Mi
