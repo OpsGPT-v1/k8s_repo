@@ -406,7 +406,7 @@ spec:
                   name: notification-service-secret
                   key: SLACK_WEBHOOK_URL
             - name: NOTIFICATION_CHANNEL
-              value: "console"
+              value: "slack"
             - name: NOTIFICATION_RETRY_COUNT
               value: "3"
             - name: NOTIFICATION_TIMEOUT_SECONDS
